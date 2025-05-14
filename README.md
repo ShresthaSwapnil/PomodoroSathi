@@ -1,4 +1,5 @@
-# pomo_app
+# PomodoroSathi
+Simple Pomodoro App using Flutter
 
 A new Flutter project.
 
