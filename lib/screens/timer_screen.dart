@@ -2,16 +2,16 @@
 // ignore_for_file: library_private_types_in_public_api, deprecated_member_use
 
 import 'dart:async';
-import 'dart:math'; // For random affirmations
-import 'dart:math' as math;
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:pomo_app/models/session_model.dart';
 import 'package:pomo_app/screens/break_screen.dart';
-import 'package:pomo_app/screens/main_screen.dart';
+import 'package:pomo_app/screens/main_screen.dart'; 
 import 'package:pomo_app/utils/colors.dart';
 import 'package:pomo_app/utils/animations.dart';
-import 'package:pomo_app/widgets/timer_painter.dart';
-import 'package:pomo_app/services/history_service.dart';
+import 'package:pomo_app/widgets/linear_seconds_painter.dart';
+import 'package:animations/animations.dart';
+
 
 class TimerScreen extends StatefulWidget {
   final SessionModel session;
@@ -25,95 +25,70 @@ class TimerScreen extends StatefulWidget {
 class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin {
   Timer? _timer;
   late int _currentSeconds;
-  late AnimationController _animationController;
+  late int _totalWorkSeconds; // To calculate progress for new painter
+  // Remove _animationController if it was only for the arc painter
+  // late AnimationController _animationController;
   bool _isPaused = false;
 
-  final HistoryService _historyService = HistoryService();
+  String _currentAffirmation = "You can do it! 😊"; // Initial affirmation
 
-  String _currentBottomAffirmation1 = "";
-  String _currentBottomAffirmation2 = "";
-
-  final List<String> _bottomAffirmations = [
+  final List<String> _affirmationsList = [
     "Keep going! 💪",
     "Almost there!",
     "Stay focused.",
     "You've got this!",
-    "Deep breath.",
+    "Deep breath and carry on.",
     "One step at a time.",
     "Progress, not perfection.",
     "Make it happen.",
-    "Stay strong.",
-    "Believe in yourself."
+    "Stay strong and steady.",
+    "Believe in your effort.",
+    "Embrace the focus.",
+    "Great work!",
+    "Small steps, big results."
   ];
 
   @override
   void initState() {
     super.initState();
-    _currentSeconds = widget.session.workDurationMinutes *60;
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: _currentSeconds),
-    );
-    _animationController.value = 0.0; // Start from beginning
+    _totalWorkSeconds = widget.session.workDurationMinutes ;
+    _currentSeconds = _totalWorkSeconds;
 
     _startWorkTimer();
-    _setRandomBottomAffirmations();
+    _setRandomAffirmation(); 
   }
 
-  void _setRandomBottomAffirmations() {
+  void _setRandomAffirmation() {
+    if (!mounted) return;
     final random = Random();
-    _currentBottomAffirmation1 = _bottomAffirmations[random.nextInt(_bottomAffirmations.length)];
-    // Ensure second affirmation is different if possible and list is long enough
-    if (_bottomAffirmations.length > 1) {
-      do {
-        _currentBottomAffirmation2 = _bottomAffirmations[random.nextInt(_bottomAffirmations.length)];
-      } while (_currentBottomAffirmation2 == _currentBottomAffirmation1 && _bottomAffirmations.length > 1);
-    } else {
-        _currentBottomAffirmation2 = ""; // No second affirmation if list is too short
-    }
-  }
-
-
-  void _updateAnimationControllerDuration() {
-    _animationController.duration = Duration(seconds: widget.session.workDurationMinutes * 60);
+    setState(() {
+      _currentAffirmation = _affirmationsList[random.nextInt(_affirmationsList.length)];
+    });
   }
 
   void _startWorkTimer() {
     _isPaused = false;
-    _updateAnimationControllerDuration();
-    _animationController.forward(from: 1.0 - (_currentSeconds / (widget.session.workDurationMinutes * 60).clamp(1, double.infinity))); // Ensure non-zero divisor
+    // _animationController.forward(from: 1.0 - (_currentSeconds / _totalWorkSeconds.clamp(1, double.infinity)));
 
     _timer?.cancel();
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_currentSeconds > 0) {
-        if (mounted) { // Check if widget is still in the tree
+        if (mounted) {
           setState(() {
             _currentSeconds--;
-            if (_currentSeconds % 15 == 0) { // Change bottom affirmations periodically
-                _setRandomBottomAffirmations();
+            // Change affirmation every 15 seconds for example
+            if (_currentSeconds % 15 == 0 && _currentSeconds < _totalWorkSeconds - 5) { 
+              _setRandomAffirmation();
             }
           });
         }
       } else {
         _timer?.cancel();
-        _animationController.stop();
-
-        // **** SAVE SESSION TO HISTORY ****
-        final completedSession = widget.session; // Session details are in widget.session
-        completedSession.completionDate = DateTime.now(); // Set completion time
-        // Optionally assign a unique ID if not done in model's toJson
-        // completedSession.id = DateTime.now().millisecondsSinceEpoch.toString();
-        _historyService.addSession(completedSession).then((_) {
-            print("Session saved: ${completedSession.title}");
-        }).catchError((error) {
-            print("Error saving session: $error");
-        });
-        // ********************************
-
+        // _animationController.stop();
+        // ... (save session logic from previous step)
         if (mounted) {
           Navigator.of(context).pushReplacement(
-            Animations.fadeTransition(BreakScreen(session: widget.session)),
+            AppScreenTransitions.sharedAxis(BreakScreen(session: widget.session), SharedAxisTransitionType.horizontal),
           );
         }
       }
@@ -123,12 +98,12 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   void _pauseResumeTimer() {
     if (!mounted) return;
     setState(() {
-      if (_isPaused) { // Resume
+      if (_isPaused) {
         _isPaused = false;
         _startWorkTimer();
-      } else { // Pause
+      } else {
         _timer?.cancel();
-        _animationController.stop();
+        // _animationController.stop();
         _isPaused = true;
       }
     });
@@ -136,13 +111,10 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
   void _stopSessionAndGoBack() {
     _timer?.cancel();
-    _animationController.stop();
+    // _animationController.stop();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => MainScreen()
-          ,
-        ),
+        AppScreenTransitions.sharedAxis(MainScreen(), SharedAxisTransitionType.scaled, duration: Duration(milliseconds: 400)), // Go back to MainScreen
         (Route<dynamic> route) => false,
       );
     }
@@ -151,161 +123,140 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   @override
   void dispose() {
     _timer?.cancel();
-    _animationController.dispose();
+    // _animationController.dispose();
     super.dispose();
   }
 
   String _formatTime(int totalSeconds) {
     int minutes = totalSeconds ~/ 60;
     int seconds = totalSeconds % 60;
-    return '${minutes.toString()}:${seconds.toString().padLeft(2, '0')}'; // Changed to match image "0:02"
+    return '${minutes.toString()}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
     String greetingName = widget.session.userName.isNotEmpty ? widget.session.userName.split(" ")[0] : "User";
-    double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
+    // double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: AppColors.secondary, // Deep purple background
       body: SafeArea(
         child: Center(
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Ticking Animation (Dashed Arc)
-              Positioned(
-                top: screenHeight * 0.48, // Adjust as needed
-                child: AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      size: Size(screenWidth * 0.6, screenWidth * 0.3), // Width, Height
-                      painter: TimerPainter(
-                        progress: 1.0 - (_currentSeconds / (widget.session.workDurationMinutes * 60).clamp(1, double.infinity)),
-                        backgroundColor: Colors.transparent,
-                        color: Colors.white.withOpacity(0.7),
-                        isDashed: true,
-                        strokeWidth: 3,
-                        dashCount: 20, // Fewer dashes for this smaller arc
-                        isArcPartial: true,
-                        arcAngleCoverage: math.pi * 1.0, // Semicircle for example
-                      ),
-                    );
-                  },
-                ),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: screenHeight * 0.05), // Space from top
 
-// SECONDARY DECORATIVE/BACKGROUND DASHED CIRCLE (Lower on the screen)
-              // Positioned(
-              //   bottom: screenHeight * 0.12, // Adjusted position
-              //   child: CustomPaint(
-              //     size: Size(screenWidth * 0.85, screenWidth * 0.85), // Larger
-              //     painter: TimerPainter(
-              //       progress: 1.0, // Not used if isFixedCircle is true
-              //       backgroundColor: Colors.transparent,
-              //       color: Colors.white.withOpacity(0.20), // Slightly more subtle
-              //       isDashed: true,
-              //       strokeWidth: 2.5,
-              //       dashCount: 40, // More dashes for a fuller circle
-              //       isFixedCircle: true, // This makes it a static full dashed circle
-              //     ),
-              //   ),
-              // ),
-
-              // Main Content Column
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Session Title Chip
-                    Chip(
-                      backgroundColor: Colors.black, // Slightly increased opacity for better background
-                        label: Text(
+                // Attractive Session Title Chip
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    // gradient: LinearGradient(
+                    //   colors: [AppColors.primary.withOpacity(0.3), AppColors.primary.withOpacity(0.1)],
+                    //   begin: Alignment.topLeft,
+                    //   end: Alignment.bottomRight,
+                    // ),
+                    color: Colors.white.withOpacity(0.18), // Solid color as per screenshot
+                    borderRadius: BorderRadius.circular(25), // More rounded
+                    // border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1)
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min, // So chip doesn't take full width
+                    children: [
+                      Icon(Icons.topic_outlined, color: Colors.white.withOpacity(0.8), size: 18), // Optional Icon
+                      SizedBox(width: 8),
+                      Flexible( // To prevent overflow if title is long
+                        child: Text(
                           widget.session.title,
-                          style: TextStyle(
-                            color: Colors.white, // Explicitly white
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600, // Slightly bolder
-                          ),
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        deleteIcon: Icon(Icons.close, color: Colors.white, size: 20), // Ensure delete icon is visible
-                        onDeleted: _stopSessionAndGoBack,
-                        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10), // Adjust padding if needed
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), // Softer corners
                       ),
-                    SizedBox(height: screenHeight * 0.05),
-
-                    // Main Affirmation
-                    Text(
-                      'Focus on a process',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 24, color: Colors.white.withOpacity(0.9)),
-                    ),
-                    Text(
-                      '$greetingName!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 24, color: AppColors.primary, fontWeight: FontWeight.bold), // Pomodoro Orange for name
-                    ),
-                    SizedBox(height: screenHeight * 0.04),
-
-                    // Big Timer Display (tappable for pause/resume)
-                    GestureDetector(
-                      onTap: _pauseResumeTimer,
-                      child: Text(
-                        _formatTime(_currentSeconds),
-                        style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                    SizedBox(height: screenHeight * 0.03), // Space for the ticking animation to be visible below
-
-                    // Small Affirmation Bubble
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: Text(
-                        _isPaused ? "Paused. Take a moment. 🧘" : "You can do it! 😊",
-                        style: TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                    SizedBox(height: screenHeight * 0.08), // More space before bottom affirmations
-
-                    // Random Smaller Affirmations at the Bottom
-                    Text(
-                       _isPaused ? "" : 'Come on, $greetingName 🙇', // Or _currentBottomAffirmation1
-                      style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
-                    ),
-                    SizedBox(height: 5),
-                    if (!_isPaused && _currentBottomAffirmation2.isNotEmpty) // Only show if not paused and affirmation exists
-                        Text(
-                        _currentBottomAffirmation2, // "Step on it! 🔥" or similar
-                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.35)),
-                        ),
-
-                    Spacer(), // Pushes pause button to bottom if we keep it separate
-                     // Pause/Resume Button (Alternative if timer tap isn't preferred)
-                     if (true) // Set to false if timer tap is enough
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 30.0),
-                          child: IconButton(
-                            icon: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, color: Colors.white, size: 40),
-                            onPressed: _pauseResumeTimer,
-                            style: IconButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.1),
-                                padding: EdgeInsets.all(15)
-                            ),
-                          ),
-                        ),
-                  ],
+                      SizedBox(width: 8),
+                      InkWell(
+                        onTap: _stopSessionAndGoBack,
+                        child: Icon(Icons.close, color: Colors.white.withOpacity(0.8), size: 20),
+                      )
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: screenHeight * 0.06),
+
+                // Main Affirmation
+                Text(
+                  'Focus on a process',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 24, color: Colors.white.withOpacity(0.9)),
+                ),
+                Text(
+                  '$greetingName!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 24, color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: screenHeight * 0.05),
+
+                // Big Timer Display
+                GestureDetector(
+                  onTap: _pauseResumeTimer, // Tappable timer for pause/resume
+                  child: Text(
+                    _formatTime(_currentSeconds),
+                    style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2.0),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.04),
+
+                // Dynamic Affirmation Bubble (replaces "You can do it!")
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Text(
+                    _isPaused ? "Paused. Take a moment. 🧘" : _currentAffirmation, // Show random or paused message
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
+                ),
+
+                Spacer(), // Pushes elements above and below
+
+                // New Ticking Animation - Vertical Lines
+                SizedBox(
+                  height: 40, // Adjust height as desired for the animation area
+                  width: MediaQuery.of(context).size.width * 0.85, // Control width if needed
+                  // margin: EdgeInsets.symmetric(vertical: 10), // Add vertical margin if needed
+                  child: CustomPaint(
+                    painter: LinearSecondsPainter(
+                      currentSecondTick: _totalWorkSeconds - _currentSeconds, // Elapsed seconds
+                      totalTicksInCycle: 60,
+                      baseLineColor: Colors.white.withOpacity(0.3),    // Dimmer base lines
+                      highlightColor: AppColors.primary.withOpacity(1.0), // Fully opaque highlight
+                      displayLineCount: 35, // e.g., 35 lines (odd number)
+                      lineToSpacingRatio: 0.2, // Thinner lines
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.03), // Space below painter
+
+                // Pause/Resume Button
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 30.0),
+                  child: IconButton(
+                    icon: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, color: Colors.white, size: 45),
+                    onPressed: _pauseResumeTimer,
+                    style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.12),
+                        padding: EdgeInsets.all(18)
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

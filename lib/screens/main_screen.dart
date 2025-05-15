@@ -1,10 +1,10 @@
-// lib/screens/main_screen.dart
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:flutter/material.dart';
 import 'package:pomo_app/screens/history_screen.dart';
 import 'package:pomo_app/screens/input_screen.dart';
 import 'package:pomo_app/utils/colors.dart';
+import 'package:animations/animations.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
 
   // Pages for the tabs
   static final List<Widget> _widgetOptions = <Widget>[
-    InputScreen(), // Your existing input screen
+    InputScreen(),
     HistoryScreen(),
   ];
 
@@ -31,7 +31,15 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: PageTransitionSwitcher( 
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (Widget child, Animation<double> primaryAnimation, Animation<double> secondaryAnimation) {
+          return FadeThroughTransition(
+            animation: primaryAnimation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          );
+        },
         child: _widgetOptions.elementAt(_selectedIndex),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -48,11 +56,11 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: AppColors.primary, // Use your app's primary color
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey.shade600,
-        backgroundColor: Colors.white, // Or AppColors.background if it's light
-        type: BottomNavigationBarType.fixed, // Good for 2-3 items
-        elevation: 8.0, // Add some elevation
+        backgroundColor: Colors.white, 
+        type: BottomNavigationBarType.fixed, 
+        elevation: 8.0, 
         onTap: _onItemTapped,
       ),
     );

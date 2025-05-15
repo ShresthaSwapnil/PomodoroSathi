@@ -1,11 +1,12 @@
 // ignore_for_file: deprecated_member_use, library_private_types_in_public_api
 
 import 'dart:async';
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:pomo_app/models/session_model.dart';
 import 'package:pomo_app/screens/main_screen.dart';
+import 'package:pomo_app/utils/animations.dart';
 import 'package:pomo_app/utils/colors.dart';
-// import 'package:pomo_app/utils/animations.dart';
 
 class BreakScreen extends StatefulWidget {
   final SessionModel session;
@@ -49,12 +50,10 @@ class _BreakScreenState extends State<BreakScreen> with TickerProviderStateMixin
   }
 
   void _navigateToInputScreen() {
-    _timer?.cancel(); // Ensure timer is cancelled
+    _timer?.cancel();
     _blobAnimationController.stop();
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => MainScreen(),
-      ),
+      AppScreenTransitions.sharedAxis(MainScreen(), SharedAxisTransitionType.scaled, duration: Duration(milliseconds: 400)),
       (Route<dynamic> route) => false,
     );
   }

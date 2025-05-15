@@ -3,12 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:pomo_app/models/session_model.dart';
 import 'package:pomo_app/screens/timer_screen.dart';
+import 'package:pomo_app/services/user_prefs_service.dart';
 import 'package:pomo_app/utils/colors.dart';
-import 'package:pomo_app/utils/animations.dart'; // Using our custom animations
+import 'package:pomo_app/utils/animations.dart'; 
+import 'package:animations/animations.dart';
+
 
 class InputScreen extends StatefulWidget {
-  final String? initialName; // To prefill if coming back
-  final SessionModel? previousSession; // To prefill other details
+  final String? initialName;
+  final SessionModel? previousSession; 
 
   const InputScreen({super.key, this.initialName, this.previousSession});
 
@@ -17,29 +20,33 @@ class InputScreen extends StatefulWidget {
 }
 
 class _InputScreenState extends State<InputScreen> {
-  late TextEditingController _nameController;
   late TextEditingController _titleController;
   int _selectedWorkDuration = 25;
   int _selectedBreakDuration = 5;
-  int _selectedPriority = 1; // Default priority
+  int _selectedPriority = 1; 
+  String _userName = "User";
+  final UserPrefsService _prefsService = UserPrefsService();
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.initialName ?? "");
+    _loadUserName();;
     _titleController = TextEditingController(text: widget.previousSession?.title ?? "");
     _selectedWorkDuration = widget.previousSession?.workDurationMinutes ?? 25;
     _selectedBreakDuration = widget.previousSession?.breakDurationMinutes ?? 5;
     _selectedPriority = widget.previousSession?.priority ?? 1;
   }
 
-  void _startSession() {
-    if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter your name!')),
-      );
-      return;
+  Future<void> _loadUserName() async {
+    final name = await _prefsService.getUserName();
+    if (mounted && name != null) {
+      setState(() {
+        _userName = name;
+      });
     }
+  }
+
+  void _startSession() {
     if (_titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please enter a title for your session!')),
@@ -48,17 +55,17 @@ class _InputScreenState extends State<InputScreen> {
     }
 
     final session = SessionModel(
-      userName: _nameController.text,
+      userName: _userName,
       title: _titleController.text,
       workDurationMinutes: _selectedWorkDuration,
       breakDurationMinutes: _selectedBreakDuration,
       priority: _selectedPriority,
-      completionDate: DateTime.now(), // Provide current date/time or adjust as needed
+      completionDate: DateTime.now(), 
     );
 
     Navigator.of(context).push(
       // Using the slideUpTransition from utils/animations.dart
-      Animations.slideUpTransition(TimerScreen(session: session)),
+      AppScreenTransitions.sharedAxis(TimerScreen(session: session), SharedAxisTransitionType.vertical),
     );
   }
 
@@ -83,45 +90,31 @@ class _InputScreenState extends State<InputScreen> {
               // Pass the full name to ui-avatars.com. It's good at creating initials.
               // Use a fallback if the name is empty.
               backgroundImage: NetworkImage(
-                'https://ui-avatars.com/api/?name=${_nameController.text.trim().isNotEmpty ? Uri.encodeComponent(_nameController.text.trim()) : "User"}&background=random&color=fff&size=128'
+                'https://ui-avatars.com/api/?name=${_userName.trim().isNotEmpty ? Uri.encodeComponent(_userName.trim()) : "P"}&background=random&color=fff&size=128'
               ),
               radius: 18,
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView( // Added SingleChildScrollView for smaller screens
+      body: SingleChildScrollView( 
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hello, ${_nameController.text.isNotEmpty ? _nameController.text : 'User'}!',
+              'Hello, $_userName!',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: AppColors.textColor.withOpacity(0.8)),
             ),
             SizedBox(height: 5),
             Text(
-              'Choose priorities',
+              'Create a new Session',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontSize: 28),
-            ),
-            SizedBox(height: 20),
-            // Name Input
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Your Name',
-                hintText: 'Enter your name here',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              onChanged: (value) {
-                setState(() {}); // To update avatar and greeting
-              },
             ),
             SizedBox(height: 25),
             _buildSessionCard(context),
             SizedBox(height: 30),
-            _buildPriorityAddSection(),
+            _buildPrioritySelectorSection(),
             SizedBox(height: 20),
              Center(
               child: ElevatedButton.icon(
@@ -136,6 +129,7 @@ class _InputScreenState extends State<InputScreen> {
                 ),
               ),
             ),
+            SizedBox(height: 20,),
           ],
         ),
       ),
@@ -144,7 +138,7 @@ class _InputScreenState extends State<InputScreen> {
 
   Widget _buildSessionCard(BuildContext context) {
     return Container(
-        width: double.infinity, // Take full width
+        width: double.infinity, 
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 25.0),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
@@ -186,7 +180,7 @@ class _InputScreenState extends State<InputScreen> {
               children: [
                 _buildDurationChip(15, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
                 _buildDurationChip(25, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
-                _buildDurationChip(45, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"), // Added 45 min option
+                _buildDurationChip(45, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
               ],
             ),
             SizedBox(height: 20),
@@ -198,7 +192,7 @@ class _InputScreenState extends State<InputScreen> {
               children: [
                 _buildDurationChip(5, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
                 _buildDurationChip(15, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
-                _buildDurationChip(30, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"), // Added 30 min option
+                _buildDurationChip(30, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
 
               ],
             ),
@@ -227,37 +221,22 @@ class _InputScreenState extends State<InputScreen> {
     );
   }
 
-   Widget _buildPriorityAddSection() {
+   Widget _buildPrioritySelectorSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Set Task Priority",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textColor.withOpacity(0.7)),
+          "Set Session Priority (Optional)",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textColor.withOpacity(0.7)),
         ),
-        SizedBox(height: 10),
+        SizedBox(height: 12),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceAround, // Better spacing for 3 items
           children: [
             _buildPriorityCircle("1", 1, isSelected: _selectedPriority == 1),
             _buildPriorityCircle("2", 2, isSelected: _selectedPriority == 2),
             _buildPriorityCircle("3", 3, isSelected: _selectedPriority == 3),
-            // The "Add" button's role here is for adding tasks to a list (future scope)
-            // For now, it's a visual placeholder or could be removed if not used.
-            ElevatedButton(
-              onPressed: () {
-                // Future: Implement adding a new task to a list of Pomodoro sessions
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Add new task functionality (coming soon!)')),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87,
-                shape: CircleBorder(),
-                padding: EdgeInsets.all(18),
-              ),
-              child: Icon(Icons.add, color: Colors.white),
-            ),
+            // "Add" button removed as per your feedback
           ],
         ),
       ],
@@ -292,7 +271,6 @@ class _InputScreenState extends State<InputScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _titleController.dispose();
     super.dispose();
   }
