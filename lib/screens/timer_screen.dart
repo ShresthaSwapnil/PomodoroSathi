@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:pomo_app/models/session_model.dart';
 import 'package:pomo_app/screens/break_screen.dart';
 import 'package:pomo_app/screens/main_screen.dart'; 
+import 'package:pomo_app/services/history_service.dart';
 import 'package:pomo_app/utils/colors.dart';
 import 'package:pomo_app/utils/animations.dart';
-import 'package:pomo_app/widgets/linear_seconds_painter.dart';
 import 'package:animations/animations.dart';
 
 
@@ -25,12 +25,14 @@ class TimerScreen extends StatefulWidget {
 class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin {
   Timer? _timer;
   late int _currentSeconds;
-  late int _totalWorkSeconds; // To calculate progress for new painter
-  // Remove _animationController if it was only for the arc painter
-  // late AnimationController _animationController;
+  late int _totalWorkSeconds;
   bool _isPaused = false;
 
-  String _currentAffirmation = "You can do it! 😊"; // Initial affirmation
+  String _currentAffirmation = ""; 
+  String _nextAffirmationInPreview = "";
+  Key _affirmationBubbleKey = UniqueKey();
+
+  final HistoryService _historyService = HistoryService();
 
   final List<String> _affirmationsList = [
     "Keep going! 💪",
@@ -51,25 +53,51 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _totalWorkSeconds = widget.session.workDurationMinutes ;
+    _totalWorkSeconds = widget.session.workDurationMinutes ; // Convert minutes to seconds
     _currentSeconds = _totalWorkSeconds;
-
+    _initializeAffirmations();
     _startWorkTimer();
-    _setRandomAffirmation(); 
   }
 
-  void _setRandomAffirmation() {
-    if (!mounted) return;
+  void _initializeAffirmations() {
+    if (_affirmationsList.isEmpty) return;
     final random = Random();
+    _currentAffirmation = _affirmationsList[random.nextInt(_affirmationsList.length)];
+
+    if (_affirmationsList.length > 1) {
+      do {
+        _nextAffirmationInPreview = _affirmationsList[random.nextInt(_affirmationsList.length)];
+      } while (_nextAffirmationInPreview == _currentAffirmation);
+    } else {
+      _nextAffirmationInPreview = _currentAffirmation; // Fallback if only one affirmation
+    }
+// Initial key
+  }
+
+  void _updateAffirmations() {
+    if (!mounted || _affirmationsList.isEmpty) return;
+
     setState(() {
-      _currentAffirmation = _affirmationsList[random.nextInt(_affirmationsList.length)];
+      // The current _nextAffirmationInPreview moves to the bubble
+      _currentAffirmation = _nextAffirmationInPreview;
+      _affirmationBubbleKey = ValueKey<String>(_currentAffirmation);
+
+      if (_affirmationsList.length > 1) {
+        String newNext;
+        final random = Random();
+        do {
+          newNext = _affirmationsList[random.nextInt(_affirmationsList.length)];
+        } while (newNext == _currentAffirmation);
+        _nextAffirmationInPreview = newNext;
+      } else {
+        // If only one or no affirmations left to choose from that are different
+        _nextAffirmationInPreview = _currentAffirmation;
+      }
     });
   }
 
   void _startWorkTimer() {
     _isPaused = false;
-    // _animationController.forward(from: 1.0 - (_currentSeconds / _totalWorkSeconds.clamp(1, double.infinity)));
-
     _timer?.cancel();
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_currentSeconds > 0) {
@@ -78,14 +106,15 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
             _currentSeconds--;
             // Change affirmation every 15 seconds for example
             if (_currentSeconds % 15 == 0 && _currentSeconds < _totalWorkSeconds - 5) { 
-              _setRandomAffirmation();
+              _updateAffirmations();
             }
           });
         }
       } else {
         _timer?.cancel();
-        // _animationController.stop();
-        // ... (save session logic from previous step)
+        final completedSession = widget.session;
+        completedSession.completionDate = DateTime.now();
+        _historyService.addSession(completedSession);
         if (mounted) {
           Navigator.of(context).pushReplacement(
             AppScreenTransitions.sharedAxis(BreakScreen(session: widget.session), SharedAxisTransitionType.horizontal),
@@ -137,7 +166,6 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     String greetingName = widget.session.userName.isNotEmpty ? widget.session.userName.split(" ")[0] : "User";
     double screenHeight = MediaQuery.of(context).size.height;
-    // double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: AppColors.secondary, // Deep purple background
@@ -209,6 +237,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                 ),
                 SizedBox(height: screenHeight * 0.04),
 
+                
                 // Dynamic Affirmation Bubble (replaces "You can do it!")
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -223,25 +252,36 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                   ),
                 ),
 
-                Spacer(), // Pushes elements above and below
-
-                // New Ticking Animation - Vertical Lines
-                SizedBox(
-                  height: 40, // Adjust height as desired for the animation area
-                  width: MediaQuery.of(context).size.width * 0.85, // Control width if needed
-                  // margin: EdgeInsets.symmetric(vertical: 10), // Add vertical margin if needed
-                  child: CustomPaint(
-                    painter: LinearSecondsPainter(
-                      currentSecondTick: _totalWorkSeconds - _currentSeconds, // Elapsed seconds
-                      totalTicksInCycle: 60,
-                      baseLineColor: Colors.white.withOpacity(0.3),    // Dimmer base lines
-                      highlightColor: AppColors.primary.withOpacity(1.0), // Fully opaque highlight
-                      displayLineCount: 35, // e.g., 35 lines (odd number)
-                      lineToSpacingRatio: 0.2, // Thinner lines
+                Padding(
+                  padding: const EdgeInsets.only(top:12.0),
+                  child: AnimatedSwitcher( // To animate changes in the next affirmation text itself
+                  duration: const Duration(milliseconds: 700),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition( // Optional: add a slight slide
+                          position: Tween<Offset>(begin: const Offset(0.0, 0.3), end: Offset.zero).animate(animation),
+                          child: child
+                      ),
+                    );
+                  },
+                  child: Text(
+                    _isPaused ? "" : _nextAffirmationInPreview, // Show next only when not paused
+                    key: ValueKey<String>(_nextAffirmationInPreview), // Key to trigger animation on text change
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.5), // Less prominent
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
+                                ),
                 ),
-                SizedBox(height: screenHeight * 0.03), // Space below painter
+              SizedBox(height: screenHeight * 0.025), 
+
+              Spacer(), // Pushes elements above and below
+
+              SizedBox(height: screenHeight * 0.03),
 
                 // Pause/Resume Button
                 Padding(

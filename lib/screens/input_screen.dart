@@ -30,7 +30,7 @@ class _InputScreenState extends State<InputScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserName();;
+    _loadUserName();
     _titleController = TextEditingController(text: widget.previousSession?.title ?? "");
     _selectedWorkDuration = widget.previousSession?.workDurationMinutes ?? 25;
     _selectedBreakDuration = widget.previousSession?.breakDurationMinutes ?? 5;
