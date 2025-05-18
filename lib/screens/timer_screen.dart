@@ -37,19 +37,19 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   final HistoryService _historyService = HistoryService();
 
   final List<String> _affirmationsList = [
-    "Keep going! 💪",
-    "Almost there!",
-    "Stay focused.",
-    "You've got this!",
-    "Deep breath and carry on.",
-    "One step at a time.",
-    "Progress, not perfection.",
-    "Make it happen.",
-    "Stay strong and steady.",
-    "Believe in your effort.",
-    "Embrace the focus.",
-    "Great work!",
-    "Small steps, big results."
+    "Keep going! 💪✨",
+    "Almost there! 🏁",
+    "Stay focused. 🧘‍♂️",
+    "You've got this! 👊",
+    "Deep breath and carry on. 🌬️",
+    "One step at a time. 🚶‍♀️",
+    "Progress, not perfection. 📈",
+    "Make it happen. 🌟",
+    "Stay strong and steady. 🏋️‍♀️",
+    "Believe in your effort. 💖",
+    "Embrace the focus. 🎯",
+    "Great work! 🎉",
+    "Small steps, big results. 🌱"
   ];
 
   @override
