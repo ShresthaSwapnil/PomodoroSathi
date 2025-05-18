@@ -10,6 +10,7 @@ import 'package:pomo_app/screens/main_screen.dart';
 import 'package:pomo_app/services/history_service.dart';
 import 'package:pomo_app/utils/colors.dart';
 import 'package:pomo_app/utils/animations.dart';
+import 'package:pomo_app/widgets/ticking_animation.dart';
 import 'package:animations/animations.dart';
 
 
@@ -27,6 +28,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   late int _currentSeconds;
   late int _totalWorkSeconds;
   bool _isPaused = false;
+
 
   String _currentAffirmation = ""; 
   String _nextAffirmationInPreview = "";
@@ -53,7 +55,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _totalWorkSeconds = widget.session.workDurationMinutes ; // Convert minutes to seconds
+    _totalWorkSeconds = widget.session.workDurationMinutes * 60; // Convert minutes to seconds
     _currentSeconds = _totalWorkSeconds;
     _initializeAffirmations();
     _startWorkTimer();
@@ -71,7 +73,6 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     } else {
       _nextAffirmationInPreview = _currentAffirmation; // Fallback if only one affirmation
     }
-// Initial key
   }
 
   void _updateAffirmations() {
@@ -235,6 +236,17 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                     style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2.0),
                   ),
                 ),
+                SizedBox(height: screenHeight * 0.04),
+
+                TickingAnimation(
+                  isRunning: !_isPaused,
+                  lineColor: Colors.white.withOpacity(0.6),
+                  width: MediaQuery.of(context).size.width * 0.6,
+                  height: 60,
+                  numberOfLines: 9,
+                  animationDuration: Duration(milliseconds: 1500),
+                ),
+                
                 SizedBox(height: screenHeight * 0.04),
 
                 
