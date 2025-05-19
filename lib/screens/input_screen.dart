@@ -21,7 +21,7 @@ class InputScreen extends StatefulWidget {
 
 class _InputScreenState extends State<InputScreen> {
   late TextEditingController _titleController;
-  int _selectedWorkDuration = 25;
+  int _selectedWorkDuration = 15;
   int _selectedBreakDuration = 5;
   int _selectedPriority = 1; 
   String _userName = "User";
@@ -32,7 +32,7 @@ class _InputScreenState extends State<InputScreen> {
     super.initState();
     _loadUserName();
     _titleController = TextEditingController(text: widget.previousSession?.title ?? "");
-    _selectedWorkDuration = widget.previousSession?.workDurationMinutes ?? 25;
+    _selectedWorkDuration = widget.previousSession?.workDurationMinutes ?? 15;
     _selectedBreakDuration = widget.previousSession?.breakDurationMinutes ?? 5;
     _selectedPriority = widget.previousSession?.priority ?? 1;
   }
@@ -178,9 +178,9 @@ class _InputScreenState extends State<InputScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                _buildDurationChip(5, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
                 _buildDurationChip(15, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
                 _buildDurationChip(25, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
-                _buildDurationChip(45, _selectedWorkDuration, (val) => setState(() => _selectedWorkDuration = val), "WORK"),
               ],
             ),
             SizedBox(height: 20),
@@ -190,9 +190,9 @@ class _InputScreenState extends State<InputScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                _buildDurationChip(2, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
                 _buildDurationChip(5, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
-                _buildDurationChip(15, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
-                _buildDurationChip(30, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
+                _buildDurationChip(10, _selectedBreakDuration, (val) => setState(() => _selectedBreakDuration = val), "BREAK"),
 
               ],
             ),

@@ -12,6 +12,7 @@ import 'package:pomo_app/utils/colors.dart';
 import 'package:pomo_app/utils/animations.dart';
 import 'package:pomo_app/widgets/ticking_animation.dart';
 import 'package:animations/animations.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 
 class TimerScreen extends StatefulWidget {
@@ -29,10 +30,10 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   late int _totalWorkSeconds;
   bool _isPaused = false;
 
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   String _currentAffirmation = ""; 
   String _nextAffirmationInPreview = "";
-  Key _affirmationBubbleKey = UniqueKey();
 
   final HistoryService _historyService = HistoryService();
 
@@ -81,7 +82,6 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     setState(() {
       // The current _nextAffirmationInPreview moves to the bubble
       _currentAffirmation = _nextAffirmationInPreview;
-      _affirmationBubbleKey = ValueKey<String>(_currentAffirmation);
 
       if (_affirmationsList.length > 1) {
         String newNext;
@@ -113,6 +113,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
         }
       } else {
         _timer?.cancel();
+        _playSound();
         final completedSession = widget.session;
         completedSession.completionDate = DateTime.now();
         _historyService.addSession(completedSession);
@@ -123,6 +124,14 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
         }
       }
     });
+  }
+
+   Future<void> _playSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('timer_end.mp3')); 
+    } catch (e) {
+      print("Error playing sound: $e");
+    }
   }
 
   void _pauseResumeTimer() {
@@ -153,7 +162,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   @override
   void dispose() {
     _timer?.cancel();
-    // _animationController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
