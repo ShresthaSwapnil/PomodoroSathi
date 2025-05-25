@@ -87,7 +87,3 @@ Have feedback or ideas? Reach out on [LinkedIn](https://www.linkedin.com/in/swap
 ---
 
 Made with ❤️ using Flutter
-Let me know if:
-- You want a **dark/light theme toggle**
-- You're using any **state management (Provider, Riverpod, etc.)**
-- You’d like a **banner image for GitHub repo** as well!
